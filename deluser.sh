@@ -36,8 +36,9 @@ fun_limpar_user() {
         fi
     fi
 
-    # 3. Remove do banco local
+    # 3. Remove do banco local e do banco do módulo Dragon
     sed -i "/^$user_to_del|/d" "$USERDB"
+    sed -i "/^$user_to_del /d" /root/usuarios.db
 }
 
 # -------------------------------------------------------
