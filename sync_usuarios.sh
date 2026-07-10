@@ -29,6 +29,11 @@
 # nessa lista (e só pode ser removido por este script) quem já veio
 # de /root/usuarios.db em algum momento — ou seja, quem foi criado
 # pelo módulo do painel web, não pelo Netsimon diretamente.
+#
+# Testes criados via painel web (v2rayaddteste) não entram em
+# /root/usuarios.db (createv2teste não escreve lá). O bloco final
+# deste script os captura diretamente do Xray, desde que a conta
+# Linux ainda exista.
 # ==========================================
 
 exec 200>/tmp/sync_usuarios.lock
@@ -109,3 +114,25 @@ done < "$TRACKED"
 
 sort -u "$TEMP_TRACKED" -o "$TRACKED"
 rm -f "$TEMP_NEW" "$TEMP_TRACKED"
+
+# ── Testes criados pelo painel web (v2rayaddteste) ───────────────
+# v2rayaddteste chama createv2teste, que não escreve em
+# /root/usuarios.db. O sync normal nunca os vê. Este bloco captura
+# quem está no Xray e no Linux mas ainda ausente do painel.
+XRAY_CFG="/usr/local/etc/xray/config.json"
+[ -f "$XRAY_CFG" ] && jq -r '.inbounds[]?.settings.clients[]?.email' "$XRAY_CFG" 2>/dev/null | while read -r login; do
+    [ -z "$login" ] && continue
+    # Já está no painel (qualquer origem)
+    grep -q "^$login|" "$TARGET" && continue
+    # Já está em /root/usuarios.db (processado pelo bloco principal)
+    grep -q "^$login " "$SOURCE" && continue
+    # Conta Linux não existe mais (teste já expirou e foi removido)
+    id "$login" &>/dev/null || continue
+
+    uuid=$(resolve_uuid "$login")
+    expira=$(resolve_expira "$login")
+    senha=$(resolve_senha "$login")
+    [ -z "$expira" ] && expira=$(date -d "+2 days" '+%Y-%m-%d 23:59:59')
+
+    echo "$login|$uuid|$expira|$senha|1" >> "$TARGET"
+done
