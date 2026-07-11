@@ -87,6 +87,8 @@ TEMP_TRACKED=$(mktemp)
 
 while read -r login limite; do
     [ -z "$login" ] && continue
+    # Linux não aceita usernames iniciando com número — ignora silenciosamente
+    [[ "$login" =~ ^[0-9] ]] && continue
 
     uuid=$(resolve_uuid "$login")
     expira=$(resolve_expira "$login")
