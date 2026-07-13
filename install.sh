@@ -1,20 +1,20 @@
 #!/bin/bash
 # ==========================================
-#   NETSIMON 5.0 - INSTALADOR
+#   NETSIMON 6.0 - INSTALADOR
 # ==========================================
 
 # Garante que NENHUM apt/dpkg abra prompt interativo (whiptail, debconf, etc.)
 export DEBIAN_FRONTEND=noninteractive
 
 C=$'\033[1;36m'; G=$'\033[1;32m'; R=$'\033[1;31m'; Y=$'\033[1;33m'; W=$'\033[1;37m'; NC=$'\033[0m'
-REPO="https://raw.githubusercontent.com/miau4/Painel-Netsimon-5.0/main"
+REPO="https://raw.githubusercontent.com/miau4/Painel-Netsimon-6.0/main"
 BASE="/etc/painel"
 XRAY_CONF="/usr/local/etc/xray/config.json"
 SSL_DIR="/etc/xray-manager/ssl"
 
 clear
 echo -e "${C}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${C}║${W}              🚀 INSTALADOR NETSIMON 5.0                       ${C}║${NC}"
+echo -e "${C}║${W}              🚀 INSTALADOR NETSIMON 6.0                       ${C}║${NC}"
 echo -e "${C}╚══════════════════════════════════════════════════════════════╝${NC}"
 
 # 0. Higiene de uma instalação anterior (processos/crons antigos que
@@ -147,10 +147,10 @@ arquivos=(
     "online.sh" "limit.sh" "unblock.sh" "websocket.sh"
     "xray.sh" "xray_lib.sh" "slowdns-server.sh" "monitor.sh" "proxy.py"
     "boot_check.sh" "repair.sh" "checkuser.py" "checkuser.sh"
-    "sync_usuarios.sh" "delete_watcher.sh" "dragon_hook.sh" "txt_watcher.sh"
+    "sync_usuarios.sh" "atlas_sync.sh" "delete_watcher.sh" "dragon_hook.sh" "txt_watcher.sh"
 )
 
-echo -e "${Y}[!] Baixando módulos Netsimon 5.0...${NC}"
+echo -e "${Y}[!] Baixando módulos Netsimon 6.0...${NC}"
 for file in "${arquivos[@]}"; do
     printf "${W}  -> %-20s ${NC}" "$file"
     wget -q -O "$BASE/$file" "$REPO/$file?$(date +%s)"
@@ -182,6 +182,9 @@ openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
     -keyout "$SSL_DIR/privkey.pem" -out "$SSL_DIR/fullchain.pem" &>/dev/null
 chmod 644 "$SSL_DIR/privkey.pem" "$SSL_DIR/fullchain.pem"
 
+# [PATCH] Valores de xhttpSettings/alpn alinhados com xray.sh (setup_xray),
+# para que rodar "Reconfigurar Xray" no menu depois da instalação NÃO troque
+# esses parâmetros silenciosamente. Os dois arquivos agora geram o mesmo config.
 cat > "$XRAY_CONF" <<EOF
 {
   "log": {
@@ -264,7 +267,7 @@ echo -e "${G}OK${NC}"
 echo -ne "${W}[+] Configurando serviço Xray... ${NC}"
 cat > /etc/systemd/system/xray.service <<'EOF'
 [Unit]
-Description=Xray Service - Netsimon 5.0
+Description=Xray Service - Netsimon 6.0
 After=network.target nss-lookup.target
 
 [Service]
@@ -361,6 +364,9 @@ echo "* * * * * root bash $BASE/dragon_hook.sh > /dev/null 2>&1" \
     > /etc/cron.d/dragon_hook
 
 pkill -f delete_watcher.sh 2>/dev/null
+pkill -f atlas_sync.sh 2>/dev/null
+nohup bash "$BASE/atlas_sync.sh" >> /var/log/netsimon_atlas_sync.log 2>&1 &
+echo "* * * * * root pgrep -f atlas_sync.sh > /dev/null || nohup bash $BASE/atlas_sync.sh >> /var/log/netsimon_atlas_sync.log 2>&1 &" > /etc/cron.d/atlas_sync_watchdog
 pkill -f txt_watcher.sh 2>/dev/null
 nohup bash "$BASE/delete_watcher.sh" >> /var/log/delete_watcher_stdout.log 2>&1 &
 nohup bash "$BASE/txt_watcher.sh" >> /var/log/txt_watcher_stdout.log 2>&1 &
@@ -388,7 +394,7 @@ else
 fi
 
 echo ""
-echo -e "${G}✅ INSTALAÇÃO NETSIMON 5.0 CONCLUÍDA!${NC}"
+echo -e "${G}✅ INSTALAÇÃO NETSIMON 6.0 CONCLUÍDA!${NC}"
 echo -e "${W}Portas: ${C}443 (Xray), 80/8080 (WS), 81 (Web com PHP), 8443 (SSL), 2000 (API interna)${NC}"
 echo -e "${W}Device Check (opcional): ${C}http://SEU-IP:81/device_check.php${NC}"
 echo -e "${W}Digite ${C}menu${W} para começar.${NC}"
